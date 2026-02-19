@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Czat PL ↔ ES z logistyki</title>
+<style>
+body{ font-family: Arial; }
+#chat{ display: flex; max-width: 800px; margin:auto; }
+.panel{ width: 50%; padding: 10px; }
+#messagesA, #messagesB{
+  height: 400px;
+  border:1px solid #ccc;
+  padding: 8px;
+  overflow:auto;
+  background:#fafafa;
+}
+input{ width: 70%; }
+button{ padding:4px 8px; }
+.msg{ margin:4px 0; }
+.you{ font-weight:bold; }
+.trans{ color:#444; font-size:13px; font-style:italic; }
+</style>
+</head>
+<body>
+
+<h2 style="text-align:center;">Czat branża logistyczna PL ↔ ES</h2>
+
+<div id="chat">
+  <!-- Panel Osoba A (PL) -->
+  <div class="panel">
+    <h3>Osoba A (PL)</h3>
+    <div id="messagesA"></div>
+    <input id="inputA" placeholder="Napisz wiadomość..." />
+    <button onclick="sendA()">Wyślij</button>
+  </div>
+
+  <!-- Panel Osoba B (ES) -->
+  <div class="panel">
+    <h3>Osoba B (ES)</h3>
+    <div id="messagesB"></div>
+    <input id="inputB" placeholder="Escribe un mensaje..." />
+    <button onclick="sendB()">Enviar</button>
+  </div>
+</div>
+
+<script>
+const KEY = "288948c8-121b-42a2-afa1-a8f5d547a8e3:fx"; // Twój DeepL API Key
+
+// Słownik branżowy PL -> ES i ES -> PL
+const dictPLtoES = {
+  "magazyn":"almacén",
+  "przesyłka":"envío",
+  "kontener":"contenedor",
+  "załadunek":"carga",
+  "rozładunek":"descarga",
+  "transport":"transporte",
+  "logistyka":"logística",
+  "przewoźnik":"transportista",
+  "dokumenty":"documentos"
+};
+
+const dictEStoPL = {};
+for(let k in dictPLtoES){ dictEStoPL[dictPLtoES[k]] = k; }
+
+// Funkcja do tłumaczenia z uwzględnieniem słownika
+async function translateWithDict(text, targetLang){
+  let words = text.split(" ");
+  let translatedWords = words.map(w=>{
+    if(targetLang==="ES"){ return dictPLtoES[w.toLowerCase()] || w; }
+    else{ return dictEStoPL[w.toLowerCase()] || w; }
+  });
+  let preTranslated = translatedWords.join(" ");
+
+  // DeepL API
+  const params = new URLSearchParams();
+  params.append("auth_key", KEY);
+  params.append("text", preTranslated);
+  params.append("target_lang", targetLang);
+
+  const res = await fetch("https://api-free.deepl.com/v2/translate", { method:"POST", body: params });
+  const data = await res.json();
+  return data.translations[0].text;
+}
+
+// Wyślij z A do B
+async function sendA(){
+  const input = document.getElementById("inputA");
+  const text = input.value;
+  if(!text) return;
+  const msgA = document.getElementById("messagesA");
+  const msgB = document.getElementById("messagesB");
+
+  msgA.innerHTML += <div class="msg you">Ty: ${text}</div>;
+
+  const translated = await translateWithDict(text,"ES");
+  msgB.innerHTML += <div class="msg trans">PL→ES: ${translated}</div>;
+
+  msgA.scrollTop = msgA.scrollHeight;
+  msgB.scrollTop = msgB.scrollHeight;
+  input.value="";
+}
+
+// Wyślij z B do A
+async function sendB(){
+  const input = document.getElementById("inputB");
+  const text = input.value;
+  if(!text) return;
+  const msgB = document.getElementById("messagesB");
+  const msgA = document.getElementById("messagesA");
+
+  msgB.innerHTML += <div class="msg you">Tú: ${text}</div>;
+
+  const translated = await translateWithDict(text,"PL");
+  msgA.innerHTML += <div class="msg trans">ES→PL: ${translated}</div>;
+
+  msgA.scrollTop = msgA.scrollHeight;
+  msgB.scrollTop = msgB.scrollHeight;
+  input.value="";
+}
+</script>
+
+</body>
+</html>
